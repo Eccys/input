@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; width: 25px; padding: 5px; margin: 0; transition: width 0.3s ease; }
+        button { display: block; width: 20px; height: 20px; padding: 0; margin: 5px auto; background-color: #f0f0f0; border: 1px solid #ccc; cursor: pointer; }
+        textarea { width: calc(100% - 10px); height: 150px; display: none; font-size: 10px; resize: none; }
+        #password-container, #action-buttons { display: none; }
+        input { width: calc(100% - 10px); padding: 0; margin: 10px 5px; height: 5px; font-size: 10px; border: 1px solid #ccc; border-radius: 0; }
+    </style>
+</head>
+<body>
+    <div id="initial-container">
+        <button id="start-button"></button>
+    </div>
+    <div id="password-container">
+        <input type="password" id="password-input" placeholder="">
+        <button id="submit-password"></button>
+    </div>
+    <div id="action-buttons">
+        <button id="view-button"></button>
+        <button id="export-button"></button>
+        <button id="clear-button"></button>
+        <textarea id="data-output" readonly></textarea>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
+
