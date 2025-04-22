@@ -39,6 +39,15 @@ class InputManager {
             recognizer.handleEvent(event);
         }
     }
+
+    dispatch(action, detail = {}) {
+        const event = new CustomEvent('input-recognized', {
+            bubbles: true,
+            cancelable: true,
+            detail: { action, ...detail }
+        });
+        this.element.dispatchEvent(event);
+    }
 }
 
 export { InputManager };

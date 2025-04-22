@@ -34,7 +34,11 @@ class GestureRecognizer {
         const bestMatch = this.findBestMatch(resampled);
 
         if (bestMatch.score > 0.7) { // Confidence threshold
-            console.log(`Gesture recognized: ${bestMatch.action} (Score: ${bestMatch.score.toFixed(2)})`);
+            this.manager.dispatch(bestMatch.action, { 
+                type: 'gesture', 
+                score: bestMatch.score, 
+                path: this.path 
+            });
         }
     }
 

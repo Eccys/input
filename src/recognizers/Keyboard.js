@@ -33,7 +33,7 @@ class KeyboardRecognizer {
         const chord = this.buildChord(key);
         for (const action in this.definitions) {
             if (this.definitions[action] === chord) {
-                console.log(`Action triggered: ${action}`); // Placeholder for dispatcher
+                this.manager.dispatch(action, { type: 'keyboard', chord });
                 this.resetSequence();
                 return;
             }
@@ -45,7 +45,7 @@ class KeyboardRecognizer {
         
         for (const action in this.definitions) {
             if (this.definitions[action] === sequenceStr) {
-                console.log(`Action triggered: ${action}`); // Placeholder
+                this.manager.dispatch(action, { type: 'keyboard', sequence: sequenceStr });
                 this.resetSequence();
                 return;
             } else if (this.definitions[action].startsWith(sequenceStr + ' ')) {
