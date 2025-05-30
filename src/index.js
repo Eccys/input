@@ -81,4 +81,11 @@ manager.addRecognizer(keyboard);
 manager.addRecognizer(gesture);
 manager.start();
 
-console.log('Declarative Input Framework initialized with keyboard and gesture support.');
+console.log('Declarative Input Framework initialized. Listening for custom events...');
+
+// Example of how a developer would use the framework
+document.body.addEventListener('input-recognized', (e) => {
+    console.log('--- Input Recognized ---');
+    console.log('Action:', e.detail.action);
+    console.log('Details:', e.detail);
+});
