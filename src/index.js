@@ -20,10 +20,39 @@ class InputManager {
 
     start() {
         if (this.isListening) return;
+        this.discoverDeclarativeActions();
         for (const eventType in this.eventListeners) {
             this.element.addEventListener(eventType, this.eventListeners[eventType], { capture: true });
         }
         this.isListening = true;
+    }
+
+    discoverDeclarativeActions() {
+        const elements = this.element.querySelectorAll('[data-input-action]');
+        const keyboardDefs = {};
+
+        elements.forEach(el => {
+            const action = el.dataset.inputAction;
+            const shortcut = el.dataset.inputShortcut;
+
+            if (action && shortcut) {
+                keyboardDefs[action] = shortcut;
+                // Automatically dispatch to the element that defined the action
+                el.addEventListener('input-recognized', (e) => {
+                    if (e.detail.action === action) {
+                        console.log(`Dispatching action '${action}' to element:`, el);
+                        // In a real app, you might click() it or fire another custom event.
+                        el.style.transform = 'scale(0.95)';
+                        setTimeout(() => el.style.transform = '', 100);
+                    }
+                });
+            }
+        });
+
+        if (Object.keys(keyboardDefs).length > 0) {
+            const keyboardRecognizer = new KeyboardRecognizer(keyboardDefs);
+            this.addRecognizer(keyboardRecognizer);
+        }
     }
 
     stop() {
@@ -53,7 +82,6 @@ class InputManager {
 export { InputManager };
 
 // Example Usage (will be removed later)
-import KeyboardRecognizer from './recognizers/Keyboard.js';
 import GestureRecognizer from './recognizers/Gesture.js';
 
 // --- Gesture Definitions (Templates) ---
@@ -67,25 +95,18 @@ for(let i = 0; i <= 360; i += 10) {
 // --- Initialization ---
 const manager = new InputManager(document.body);
 
-const keyboard = new KeyboardRecognizer({
-    'inbox': 'g i',
-    'save': 'Control+s',
-});
-
 const gesture = new GestureRecognizer({
     'undo': z_gesture,
     'open_menu': circle_gesture,
 });
 
-manager.addRecognizer(keyboard);
 manager.addRecognizer(gesture);
-manager.start();
+manager.start(); // This will now also discover declarative actions
 
-console.log('Declarative Input Framework initialized. Listening for custom events...');
+console.log('Declarative Input Framework initialized. Scanning for data-input-* attributes...');
 
-// Example of how a developer would use the framework
+// Global listener for logging
 document.body.addEventListener('input-recognized', (e) => {
-    console.log('--- Input Recognized ---');
+    console.log('--- Input Recognized (Global) ---');
     console.log('Action:', e.detail.action);
-    console.log('Details:', e.detail);
 });

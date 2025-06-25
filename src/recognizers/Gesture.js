@@ -9,6 +9,7 @@ class GestureRecognizer {
         this.manager = null;
         this.isDrawing = false;
         this.path = [];
+        this.animationFrameId = null;
     }
 
     handleEvent(event) {
@@ -19,7 +20,12 @@ class GestureRecognizer {
             this.path = [[event.clientX, event.clientY]];
             event.preventDefault(); // Prevent context menu
         } else if (event.type === 'mousemove' && this.isDrawing) {
-            this.path.push([event.clientX, event.clientY]);
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+            }
+            this.animationFrameId = requestAnimationFrame(() => {
+                this.path.push([event.clientX, event.clientY]);
+            });
         } else if (event.type === 'mouseup' && this.isDrawing) {
             this.isDrawing = false;
             if (this.path.length > MIN_PATH_LENGTH) {
