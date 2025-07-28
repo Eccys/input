@@ -4,7 +4,10 @@
   "description": "A lightweight framework for creating custom, high-level input events on the web.",
   "main": "dist/input.min.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
   },
   "repository": {
     "type": "git",
