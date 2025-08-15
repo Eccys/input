@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Declarative Input Framework - Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; background: #f9f9f9; }
+        .controls { display: flex; gap: 1em; }
+        button { 
+            padding: 1em 2em; 
+            font-size: 1em; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: transform 0.1s ease;
+        }
+        #gesture-area {
+            width: 100%;
+            height: 300px;
+            border: 2px dashed #ccc;
+            margin-top: 2em;
+            background: #fff;
+            text-align: center;
+            line-height: 300px;
+            color: #999;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Declarative Input Framework</h1>
+    <p>Press `Ctrl+S` to 'save' or `g` then `i` to 'go to inbox'.</p>
+    <div class="controls">
+        <button data-input-action="save" data-input-shortcut="Control+s">Save Project</button>
+        <button data-input-action="inbox" data-input-shortcut="g i">Go to Inbox</button>
+    </div>
+
+    <div id="gesture-area">
+        Right-click and drag to draw a 'Z' (for undo) or a circle (for menu).
+    </div>
+
+    <script type="module">
+        import { InputManager } from '../src/index.js';
+        import GestureRecognizer from '../src/recognizers/Gesture.js';
+
+        // --- Gesture Definitions (Templates) ---
+        const z_gesture = [[0,0], [100,0], [0,100], [100,100]];
+        const circle_gesture = [];
+        for(let i = 0; i <= 360; i += 10) {
+            const rad = i * (Math.PI / 180);
+            circle_gesture.push([100 * Math.cos(rad), 100 * Math.sin(rad)]);
+        }
+
+        // --- Initialization ---
+        const manager = new InputManager(document.body);
+
+        const gesture = new GestureRecognizer({
+            'undo': z_gesture,
+            'open_menu': circle_gesture,
+        });
+
+        manager.addRecognizer(gesture);
+        manager.start(); // This will also discover the declarative keyboard actions
+
+        // --- Event Handling ---
+        document.body.addEventListener('input-recognized', (e) => {
+            console.log(`Action Recognized: ${e.detail.action}`);
+            alert(`Action: ${e.detail.action}`);
+        });
+    </script>
+
+</body>
+</html>
