@@ -4,9 +4,11 @@
   "description": "A lightweight framework for creating custom, high-level input events on the web.",
   "main": "dist/input.min.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "esbuild src/index.js --bundle --minify --outfile=dist/input.min.js --format=esm"
   },
   "devDependencies": {
+    "esbuild": "^0.14.0",
     "jest": "^29.0.0"
   },
   "repository": {

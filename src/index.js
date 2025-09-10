@@ -81,32 +81,7 @@ class InputManager {
 
 export { InputManager };
 
-// Example Usage (will be removed later)
+import KeyboardRecognizer from './recognizers/Keyboard.js';
 import GestureRecognizer from './recognizers/Gesture.js';
 
-// --- Gesture Definitions (Templates) ---
-const z_gesture = [[0,0], [100,0], [0,100], [100,100]]; // A simple 'Z' shape
-const circle_gesture = [];
-for(let i = 0; i <= 360; i += 10) {
-    const rad = i * (Math.PI / 180);
-    circle_gesture.push([100 * Math.cos(rad), 100 * Math.sin(rad)]);
-}
-
-// --- Initialization ---
-const manager = new InputManager(document.body);
-
-const gesture = new GestureRecognizer({
-    'undo': z_gesture,
-    'open_menu': circle_gesture,
-});
-
-manager.addRecognizer(gesture);
-manager.start(); // This will now also discover declarative actions
-
-console.log('Declarative Input Framework initialized. Scanning for data-input-* attributes...');
-
-// Global listener for logging
-document.body.addEventListener('input-recognized', (e) => {
-    console.log('--- Input Recognized (Global) ---');
-    console.log('Action:', e.detail.action);
-});
+export { InputManager, KeyboardRecognizer, GestureRecognizer };
