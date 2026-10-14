@@ -79,7 +79,9 @@ class InputManager {
             }
         }
         for (const recognizer of this.recognizers) {
-            if (typeof recognizer.resetSequence === 'function') {
+            if (typeof recognizer.reset === 'function') {
+                recognizer.reset();
+            } else if (typeof recognizer.resetSequence === 'function') {
                 recognizer.resetSequence();
             }
         }

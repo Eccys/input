@@ -38,7 +38,7 @@ class GestureRecognizer {
             if (!lastPoint || lastPoint[0] !== event.clientX || lastPoint[1] !== event.clientY) {
                 this.path.push([event.clientX, event.clientY]);
             }
-        } else if (event.type === 'mouseup' && this.isDrawing) {
+        } else if (event.type === 'mouseup' && this.isDrawing && (event.button === undefined || event.button === 2)) {
             this.isDrawing = false;
             if (this.animationFrameId && typeof cancelAnimationFrame === 'function') {
                 cancelAnimationFrame(this.animationFrameId);
@@ -51,6 +51,16 @@ class GestureRecognizer {
                 this.recognize();
             }
             this.path = [];
+        }
+    }
+
+    reset() {
+        this.isDrawing = false;
+        this.suppressContextMenu = false;
+        this.path = [];
+        if (this.animationFrameId && typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
         }
     }
 
