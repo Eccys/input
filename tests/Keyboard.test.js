@@ -63,6 +63,33 @@ describe('KeyboardRecognizer', () => {
 
         expect(dispatched).toEqual([]);
     });
+
+    it('should allow Shift modifier during key sequences (e.g. "g G") and normalize Ctrl+S chord aliases', () => {
+        const definitions = { gotoBottom: 'g G', saveAs: 'Ctrl+S' };
+        const recognizer = new KeyboardRecognizer(definitions);
+        const dispatched = [];
+        recognizer.manager = {
+            dispatch: (action, detail) => dispatched.push({ action, detail })
+        };
+
+        // Sequence 'g G' where 'G' requires holding Shift
+        recognizer.handleEvent({ type: 'keydown', key: 'g' });
+        recognizer.handleEvent({ type: 'keyup', key: 'g' });
+        recognizer.handleEvent({ type: 'keydown', key: 'Shift' });
+        recognizer.handleEvent({ type: 'keydown', key: 'G' });
+        recognizer.handleEvent({ type: 'keyup', key: 'G' });
+        recognizer.handleEvent({ type: 'keyup', key: 'Shift' });
+
+        // Chord 'Ctrl+S' triggered by pressing Control + s
+        recognizer.handleEvent({ type: 'keydown', key: 'Control' });
+        recognizer.handleEvent({ type: 'keydown', key: 's' });
+        recognizer.handleEvent({ type: 'keyup', key: 'Control' });
+
+        expect(dispatched).toEqual([
+            { action: 'gotoBottom', detail: { type: 'keyboard', sequence: 'g G' } },
+            { action: 'saveAs', detail: { type: 'keyboard', chord: 'Control+s' } }
+        ]);
+    });
 });
 
 describe('GestureRecognizer', () => {
