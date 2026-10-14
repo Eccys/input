@@ -1,8 +1,13 @@
+import KeyboardRecognizer from './recognizers/Keyboard.js';
+import GestureRecognizer from './recognizers/Gesture.js';
+
 class InputManager {
     constructor(element) {
         this.element = element;
         this.recognizers = [];
         this.isListening = false;
+        this.declarativeDiscovered = false;
+        this.actionElements = new Map();
 
         this.eventListeners = {
             'keydown': this.handleEvent.bind(this),
@@ -10,24 +15,32 @@ class InputManager {
             'mousedown': this.handleEvent.bind(this),
             'mouseup': this.handleEvent.bind(this),
             'mousemove': this.handleEvent.bind(this),
+            'contextmenu': this.handleEvent.bind(this),
         };
     }
 
     addRecognizer(recognizer) {
+        if (!recognizer) return;
         this.recognizers.push(recognizer);
         recognizer.manager = this;
     }
 
     start() {
         if (this.isListening) return;
-        this.discoverDeclarativeActions();
-        for (const eventType in this.eventListeners) {
-            this.element.addEventListener(eventType, this.eventListeners[eventType], { capture: true });
+        if (!this.declarativeDiscovered) {
+            this.discoverDeclarativeActions();
+            this.declarativeDiscovered = true;
+        }
+        if (this.element && typeof this.element.addEventListener === 'function') {
+            for (const eventType in this.eventListeners) {
+                this.element.addEventListener(eventType, this.eventListeners[eventType], { capture: true });
+            }
         }
         this.isListening = true;
     }
 
     discoverDeclarativeActions() {
+        if (!this.element || typeof this.element.querySelectorAll !== 'function') return;
         const elements = this.element.querySelectorAll('[data-input-action]');
         const keyboardDefs = {};
 
@@ -37,13 +50,16 @@ class InputManager {
 
             if (action && shortcut) {
                 keyboardDefs[action] = shortcut;
+                this.actionElements.set(action, el);
                 // Automatically dispatch to the element that defined the action
                 el.addEventListener('input-recognized', (e) => {
-                    if (e.detail.action === action) {
-                        console.log(`Dispatching action '${action}' to element:`, el);
-                        // In a real app, you might click() it or fire another custom event.
-                        el.style.transform = 'scale(0.95)';
-                        setTimeout(() => el.style.transform = '', 100);
+                    if (e.detail && e.detail.action === action) {
+                        if (el.style) {
+                            el.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                if (el.style) el.style.transform = '';
+                            }, 100);
+                        }
                     }
                 });
             }
@@ -57,8 +73,15 @@ class InputManager {
 
     stop() {
         if (!this.isListening) return;
-        for (const eventType in this.eventListeners) {
-            this.element.removeEventListener(eventType, this.eventListeners[eventType], { capture: true });
+        if (this.element && typeof this.element.removeEventListener === 'function') {
+            for (const eventType in this.eventListeners) {
+                this.element.removeEventListener(eventType, this.eventListeners[eventType], { capture: true });
+            }
+        }
+        for (const recognizer of this.recognizers) {
+            if (typeof recognizer.resetSequence === 'function') {
+                recognizer.resetSequence();
+            }
         }
         this.isListening = false;
     }
@@ -75,13 +98,12 @@ class InputManager {
             cancelable: true,
             detail: { action, ...detail }
         });
-        this.element.dispatchEvent(event);
+        const targetEl = this.actionElements.get(action) || this.element;
+        if (targetEl && typeof targetEl.dispatchEvent === 'function') {
+            targetEl.dispatchEvent(event);
+        }
     }
 }
 
-export { InputManager };
-
-import KeyboardRecognizer from './recognizers/Keyboard.js';
-import GestureRecognizer from './recognizers/Gesture.js';
-
 export { InputManager, KeyboardRecognizer, GestureRecognizer };
+
