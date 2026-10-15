@@ -1,10 +1,11 @@
 // tests/Keyboard.test.js
-import { jest } from '@jest/globals';
+import { describe, it, afterEach, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { InputManager, KeyboardRecognizer, GestureRecognizer } from '../src/index.js';
 
 describe('KeyboardRecognizer', () => {
     afterEach(() => {
-        jest.useRealTimers();
+        mock.timers.reset();
     });
 
     it('should correctly identify a simple chord and dispatch via manager', () => {
@@ -19,13 +20,13 @@ describe('KeyboardRecognizer', () => {
         recognizer.handleEvent({ type: 'keydown', key: 's' });
         recognizer.handleEvent({ type: 'keyup', key: 'Control' });
 
-        expect(dispatched).toEqual([
+        assert.deepEqual(dispatched, [
             { action: 'save', detail: { type: 'keyboard', chord: 'Control+s' } }
         ]);
     });
 
     it('should correctly identify a sequence within timeout and expire after timeout', () => {
-        jest.useFakeTimers();
+        mock.timers.enable({ apis: ['setTimeout'] });
         const definitions = { inbox: 'g i' };
         const recognizer = new KeyboardRecognizer(definitions);
         const dispatched = [];
@@ -35,16 +36,16 @@ describe('KeyboardRecognizer', () => {
 
         recognizer.handleEvent({ type: 'keydown', key: 'g' });
         recognizer.handleEvent({ type: 'keydown', key: 'i' });
-        expect(dispatched).toEqual([
+        assert.deepEqual(dispatched, [
             { action: 'inbox', detail: { type: 'keyboard', sequence: 'g i' } }
         ]);
 
         // Test sequence timeout expiration
         dispatched.length = 0;
         recognizer.handleEvent({ type: 'keydown', key: 'g' });
-        jest.advanceTimersByTime(1100);
+        mock.timers.tick(1100);
         recognizer.handleEvent({ type: 'keydown', key: 'i' });
-        expect(dispatched).toEqual([]);
+        assert.deepEqual(dispatched, []);
     });
 
     it('should not pollute plain key sequences when a non-matching modifier chord is pressed', () => {
@@ -61,7 +62,7 @@ describe('KeyboardRecognizer', () => {
         recognizer.handleEvent({ type: 'keyup', key: 'Control' });
         recognizer.handleEvent({ type: 'keydown', key: 'i' });
 
-        expect(dispatched).toEqual([]);
+        assert.deepEqual(dispatched, []);
     });
 
     it('should allow Shift modifier during key sequences (e.g. "g G") and normalize Ctrl+S chord aliases', () => {
@@ -85,9 +86,34 @@ describe('KeyboardRecognizer', () => {
         recognizer.handleEvent({ type: 'keydown', key: 's' });
         recognizer.handleEvent({ type: 'keyup', key: 'Control' });
 
-        expect(dispatched).toEqual([
+        assert.deepEqual(dispatched, [
             { action: 'gotoBottom', detail: { type: 'keyboard', sequence: 'g G' } },
             { action: 'saveAs', detail: { type: 'keyboard', chord: 'Control+s' } }
+        ]);
+    });
+
+    it('should recover from stuck modifier after missed keyup (e.g. window blur) and match suffix/single-key shortcuts', () => {
+        const definitions = { inbox: '  g   i  ', help: '?' };
+        const recognizer = new KeyboardRecognizer(definitions);
+        const dispatched = [];
+        recognizer.manager = {
+            dispatch: (action, detail) => dispatched.push({ action, detail })
+        };
+
+        // Simulate Control keydown followed by window blur (no keyup), then keydown with ctrlKey: false
+        recognizer.handleEvent({ type: 'keydown', key: 'Control' });
+        recognizer.handleEvent({ type: 'keydown', key: 'g', ctrlKey: false });
+        // Pressing '?' after 'g' should abort 'g i' and immediately fire single-key '?'
+        recognizer.handleEvent({ type: 'keydown', key: '?', ctrlKey: false });
+
+        // Repeated prefix 'g' -> 'g' -> 'i' should still match 'g i' via suffix fallback
+        recognizer.handleEvent({ type: 'keydown', key: 'g' });
+        recognizer.handleEvent({ type: 'keydown', key: 'g' });
+        recognizer.handleEvent({ type: 'keydown', key: 'i' });
+
+        assert.deepEqual(dispatched, [
+            { action: 'help', detail: { type: 'keyboard', sequence: '?' } },
+            { action: 'inbox', detail: { type: 'keyboard', sequence: 'g i' } }
         ]);
     });
 });
@@ -98,7 +124,7 @@ describe('GestureRecognizer', () => {
         const zCopy = JSON.parse(JSON.stringify(zTemplate));
 
         const recognizer = new GestureRecognizer({ undo: zTemplate });
-        expect(zTemplate).toEqual(zCopy);
+        assert.deepEqual(zTemplate, zCopy);
 
         const dispatched = [];
         recognizer.manager = {
@@ -127,17 +153,17 @@ describe('GestureRecognizer', () => {
         }
         recognizer.handleEvent({ type: 'mouseup' });
 
-        expect(dispatched.length).toBe(1);
-        expect(dispatched[0].action).toBe('undo');
-        expect(dispatched[0].detail.type).toBe('gesture');
-        expect(dispatched[0].detail.score).toBeGreaterThan(0.7);
+        assert.equal(dispatched.length, 1);
+        assert.equal(dispatched[0].action, 'undo');
+        assert.equal(dispatched[0].detail.type, 'gesture');
+        assert.ok(dispatched[0].detail.score > 0.7);
     });
 
     it('should safely handle degenerate zero-length paths without dividing by zero', () => {
         const recognizer = new GestureRecognizer({});
         const resampled = recognizer.resamplePath([[10, 10], [10, 10], [10, 10]], 64);
-        expect(resampled.length).toBe(64);
-        expect(resampled.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))).toBe(true);
+        assert.equal(resampled.length, 64);
+        assert.equal(resampled.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)), true);
     });
 });
 
@@ -179,7 +205,7 @@ describe('InputManager', () => {
         // Calling stop() and start() again must not duplicate recognizers
         manager.stop();
         manager.start();
-        expect(manager.recognizers.length).toBe(1);
+        assert.equal(manager.recognizers.length, 1);
 
         const receivedOnRoot = [];
         root.addEventListener('input-recognized', (e) => receivedOnRoot.push(e.detail));
@@ -187,8 +213,7 @@ describe('InputManager', () => {
         manager.handleEvent({ type: 'keydown', key: 'Control' });
         manager.handleEvent({ type: 'keydown', key: 's' });
 
-        expect(receivedOnRoot).toEqual([{ action: 'save', type: 'keyboard', chord: 'Control+s' }]);
-        expect(btn.style.transform).toBe('scale(0.95)');
+        assert.deepEqual(receivedOnRoot, [{ action: 'save', type: 'keyboard', chord: 'Control+s' }]);
+        assert.equal(btn.style.transform, 'scale(0.95)');
     });
 });
-
