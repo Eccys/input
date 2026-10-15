@@ -56,9 +56,12 @@ class InputManager {
                     if (e.detail && e.detail.action === action) {
                         if (el.style) {
                             el.style.transform = 'scale(0.95)';
-                            setTimeout(() => {
+                            const timer = setTimeout(() => {
                                 if (el.style) el.style.transform = '';
                             }, 100);
+                            if (timer && typeof timer.unref === 'function') {
+                                timer.unref();
+                            }
                         }
                     }
                 });
