@@ -15,7 +15,7 @@ const MODIFIER_ALIASES = {
 
 class KeyboardRecognizer {
     constructor(definitions = {}) {
-        this.definitions = definitions; // e.g., { 'inbox': 'g i', 'save': 'Control+s' }
+        this.definitions = this.normalizeDefinitions(definitions); // e.g., { 'inbox': 'g i', 'save': 'Control+s' }
         this.manager = null;
 
         this.sequence = [];
@@ -23,15 +23,48 @@ class KeyboardRecognizer {
         this.activeModifiers = new Set();
     }
 
+    normalizeDefinitions(definitions) {
+        const normalized = {};
+        if (!definitions || typeof definitions !== 'object') return normalized;
+        for (const action in definitions) {
+            const raw = definitions[action];
+            if (typeof raw === 'string') {
+                normalized[action] = raw.includes('+')
+                    ? raw.trim()
+                    : raw.trim().split(/\s+/).join(' ');
+            }
+        }
+        return normalized;
+    }
+
+    syncEventModifiers(event, normalizedKey) {
+        const flagMap = [
+            ['ctrlKey', 'Control'],
+            ['altKey', 'Alt'],
+            ['shiftKey', 'Shift'],
+            ['metaKey', 'Meta']
+        ];
+        for (const [prop, modName] of flagMap) {
+            if (typeof event[prop] === 'boolean' && normalizedKey !== modName) {
+                if (event[prop]) {
+                    this.activeModifiers.add(modName);
+                } else {
+                    this.activeModifiers.delete(modName);
+                }
+            }
+        }
+    }
+
     handleEvent(event) {
         if (!event || !['keydown', 'keyup'].includes(event.type)) return;
 
         const normalizedKey = MODIFIER_ALIASES[String(event.key || '').toLowerCase()] || event.key;
+        this.syncEventModifiers(event, normalizedKey);
 
         if (event.type === 'keydown') {
             if (this.isModifier(normalizedKey)) {
                 this.activeModifiers.add(normalizedKey);
-            } else {
+            } else if (typeof event.key === 'string' && event.key.length > 0) {
                 this.evaluate(event.key);
             }
         } else { // keyup
@@ -59,19 +92,43 @@ class KeyboardRecognizer {
         return [...modifiers, normalizedMain].join('+');
     }
 
+    matchOrAdvanceSequence() {
+        const sequenceStr = this.sequence.join(' ');
+        for (const action in this.definitions) {
+            const def = this.definitions[action];
+            if (def === sequenceStr) {
+                if (this.manager && typeof this.manager.dispatch === 'function') {
+                    this.manager.dispatch(action, { type: 'keyboard', sequence: sequenceStr });
+                }
+                this.resetSequence();
+                return true;
+            }
+        }
+        for (const action in this.definitions) {
+            if (this.definitions[action].startsWith(sequenceStr + ' ')) {
+                this.startSequenceTimer();
+                return true;
+            }
+        }
+        return false;
+    }
+
     evaluate(key) {
         // Check for chords (e.g., Control+s or Ctrl+S)
         const chord = this.buildChord(key);
         const normalizedChord = this.normalizeChordString(chord);
 
-        for (const action in this.definitions) {
-            const def = this.definitions[action];
-            if (def === chord || (normalizedChord && this.normalizeChordString(def) === normalizedChord)) {
-                if (this.manager && typeof this.manager.dispatch === 'function') {
-                    this.manager.dispatch(action, { type: 'keyboard', chord });
+        if (chord.includes('+')) {
+            for (const action in this.definitions) {
+                const def = this.definitions[action];
+                if (!def.includes('+')) continue;
+                if (def === chord || (normalizedChord && this.normalizeChordString(def) === normalizedChord)) {
+                    if (this.manager && typeof this.manager.dispatch === 'function') {
+                        this.manager.dispatch(action, { type: 'keyboard', chord });
+                    }
+                    this.resetSequence();
+                    return;
                 }
-                this.resetSequence();
-                return;
             }
         }
 
@@ -85,32 +142,19 @@ class KeyboardRecognizer {
 
         // Handle sequences (e.g., g i, g G)
         this.sequence.push(key);
-        const sequenceStr = this.sequence.join(' ');
-        
-        for (const action in this.definitions) {
-            if (this.definitions[action] === sequenceStr) {
-                if (this.manager && typeof this.manager.dispatch === 'function') {
-                    this.manager.dispatch(action, { type: 'keyboard', sequence: sequenceStr });
-                }
-                this.resetSequence();
-                return;
-            } else if (this.definitions[action].startsWith(sequenceStr + ' ')) {
-                // Potential sequence in progress, reset timer
-                this.startSequenceTimer();
+        if (this.matchOrAdvanceSequence()) {
+            return;
+        }
+
+        // Try longest suffix of the current sequence (e.g. 'a a b' -> 'a b', or 'g ?' -> '?')
+        while (this.sequence.length > 1) {
+            this.sequence.shift();
+            if (this.matchOrAdvanceSequence()) {
                 return;
             }
         }
 
-        // If no match or potential match, reset
         this.resetSequence();
-        // Start a new sequence with the current key if it's part of any definition
-        for (const action in this.definitions) {
-            if (this.definitions[action].startsWith(key + ' ')) {
-                this.sequence = [key];
-                this.startSequenceTimer();
-                break;
-            }
-        }
     }
 
     buildChord(key) {
